@@ -6,7 +6,7 @@ First, you have to select which contract template you want to use. Click the "Lo
 
 ![Load Template](/img/docs/LoadTemplate.png)
 
-This contract, which can be spent by signatures from both parties, and by only one party after a timeout, [could be used to implement a payment channel](/language/ExampleContracts.html#transferwithtimeout).
+This contract, which can be spent by signatures from both parties, and by only one party after a timeout, [could be used to implement a payment channel](/language/ExampleContracts.md#transferwithtimeout).
 
 Note that you can edit the contract template yourself, and see the compiled script update live. When you're done with this tutorial, you can try coming back and editing the contract to see what conditions you can tweak.
 
