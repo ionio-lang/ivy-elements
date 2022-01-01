@@ -26,12 +26,6 @@ const config = {
           // Please change this to your repo.
           editUrl: 'https://github.com/ionio-lang/ionio/tree/main/website/',
         },
-        blog: {
-          showReadingTime: true,
-          // Please change this to your repo.
-          editUrl:
-            'https://github.com/ionio-lang/ionio/tree/main/website/',
-        },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
@@ -55,7 +49,6 @@ const config = {
             position: 'left',
             label: 'Docs',
           },
-          {to: '/blog', label: 'Blog', position: 'right'},
           {
             href: 'https://github.com/ionio-lang/ionio',
             label: 'GitHub',
@@ -91,10 +84,6 @@ const config = {
           {
             title: 'More',
             items: [
-              {
-                label: 'Blog',
-                to: '/blog',
-              },
               {
                 label: 'GitHub',
                 href: 'https://github.com/ionio-lang/ionio',
