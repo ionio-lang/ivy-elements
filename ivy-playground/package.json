@@ -1,11 +1,7 @@
 {
   "name": "ionio-playground",
-  "description": "Sandbox for testing Ionio for Bitcoin.",
+  "description": "Sandbox for testing Ionio smart contracts.",
   "version": "0.0.1",
-  "bugs": {
-    "url": "https://github.com/ionio-lang/ionio-bitcoin/issues",
-    "email": "ionio@chain.com"
-  },
   "dependencies": {
     "@types/node": "^7.10.6",
     "@types/react": "^15.6.26",

@@ -1,8 +1,8 @@
 {
   "name": "ionio-bitcoin",
-  "description": "Compiler library for Ionio, Chain's smart contract language.",
+  "description": "Compiler library for Ionio smart contract language.",
   "version": "0.0.34",
-  "homepage": "https://www.github.com/ionio-lang/ionio-bitcoin",
+  "homepage": "https://www.github.com/ionio-lang/ionio",
   "license": "MIT",
   "main": "lib/index.js",
   "dependencies": {
