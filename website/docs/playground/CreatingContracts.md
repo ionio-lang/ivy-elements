@@ -4,15 +4,15 @@ To create a contract in the playground, use the [Create Contract](https://ionio-
 
 First, you have to select which contract template you want to use. Click the "Load Template" button and select the "TransferWithTimeout" template.
 
-![Load Template](/gitbook/images/LoadTemplate.png)
+![Load Template](/img/docs/LoadTemplate.png)
 
-This contract, which can be spent by signatures from both parties, and by only one party after a timeout, [could be used to implement a payment channel](/language/ExampleContracts.html#transferwithtimeout).
+This contract, which can be spent by signatures from both parties, and by only one party after a timeout, [could be used to implement a payment channel](/language/ExampleContracts.md#transferwithtimeout).
 
 Note that you can edit the contract template yourself, and see the compiled script update live. When you're done with this tutorial, you can try coming back and editing the contract to see what conditions you can tweak.
 
 You must then provide the contract's parameters.
 
-![Contract Arguments](/gitbook/images/ContractArguments.png)
+![Contract Arguments](/img/docs/ContractArguments.png)
 
 First, you must provide two public keys, one for the **sender** and one for the **recipient**. The playground allows you to generate a keypair, provide a public key, or provide a private key. (Do not paste your real Bitcoin private key into the playground! Private keys are stored in the browser's local storage, which is potentially insecure.) For this example, we'll generate two public keys.
 
@@ -22,6 +22,6 @@ Finally, you must provide the Value, **val**. This parameter represents the actu
 
 Once you've provided the arguments, you can see the generated testnet address, as well as the redeem script and witness script, which would be needed to spend the contract.
 
-![Address](/gitbook/images/Address.png)
+![Address](/img/docs/Address.png)
 
 Finally, you can click "Create" to instantiate a contract in the playground. Again, this doesn't actually touch the Bitcoin network—it just creates a simulated contract in memory so you can see which arguments would allow you to spend it.
