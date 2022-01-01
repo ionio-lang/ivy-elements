@@ -1,4 +1,7 @@
-### Creating contracts
+---
+sidebar_position: 2
+---
+# Creating contracts
 
 To create a contract in the playground, use the [Create Contract](https://ionio-lang.org/bitcoin/create) page.
 

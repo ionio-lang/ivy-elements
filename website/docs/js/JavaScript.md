@@ -1,4 +1,4 @@
-# JavaScript SDK
+# JavaScript
 
 Ionio is also available as a (very unstable and early-stage) [JavaScript SDK](https://www.npmjs.com/package/ionio-bitcoin).
 

@@ -1,4 +1,10 @@
-# Ionio
+---
+id: intro
+sidebar_label: Overview
+sidebar_position: 1
+---
+
+# Ionio Language
 
 Ionio is a higher-level language that allows you to write smart contracts for the Elements blockchain. It can compile to instructions for Elements’s virtual machine, a superset of Bitcoin Script.
 
@@ -12,4 +18,4 @@ You can learn more about Ionio and using the Ionio Playground for Bitcoin by rea
 
 Bug reports and feature requests are welcome; you can create an [issue](https://github.com/ionio-lang/ionio/issues) or [pull request](https://github.com/ionio-lang/ionio/pulls) on this repo.
 
-You can also join the [Ionio discussion channel]() on Matrix.
+You can also join the [Ionio discussion channel](https://t.me/ionio_lang) on Telegram.

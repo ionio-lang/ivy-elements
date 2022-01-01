@@ -1,4 +1,7 @@
-### Unlocking contracts
+---
+sidebar_position: 3
+---
+# Unlocking contracts
 
 Once you've created a contract in the playground, you can unlock it on the [Unlock](https://ionio-lang.org/bitcoin/unlock) page. 
 

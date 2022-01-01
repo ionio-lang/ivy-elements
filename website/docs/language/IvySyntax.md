@@ -1,6 +1,6 @@
 # Ionio Syntax
 
-Ionio gives you essentially all the flexibility of Bitcoin Script, but gives you some additional affordances and conveniences:
+Ionio gives you essentially all the flexibility of Elements Tapscript, but gives you some additional affordances and conveniences:
 
   * named variables
   * named "clauses"
