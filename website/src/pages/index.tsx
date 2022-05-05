@@ -17,7 +17,7 @@ function HomepageHeader() {
           <Link
             className="button button--secondary button--lg"
             to="/docs/intro">
-            Ionio Tutorial - 5min ⏱️
+            Get started - 5min ⏱️
           </Link>
         </div>
       </div>

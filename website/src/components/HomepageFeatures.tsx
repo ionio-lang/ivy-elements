@@ -10,32 +10,30 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
+    title: 'Scalable',
     image: '/img/undraw_docusaurus_mountain.svg',
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        Smart contract on Elements blockchain are designed to be scalable and powerful thanks to introspection and capabilities
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
+    title: 'Easy to use',
     image: '/img/undraw_docusaurus_tree.svg',
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Ionio lets you focus on your contract logic, and it&apos;ll do the chores. Go
+        ahead write your first smart contract in minutes, not months.
       </>
     ),
   },
   {
-    title: 'Powered by React',
+    title: 'Powered by Miniscript',
     image: '/img/undraw_docusaurus_react.svg',
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        Ionio is powered by Elements Miniscript, a language that is designed to write Bitcoin Smart Contracts in a structured way, enabling analysis, composition, generic signing and more. 
       </>
     ),
   },
