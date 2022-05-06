@@ -66,7 +66,8 @@ import {
   SignatureInput,
   TimeInput,
   TimestampTimeInput,
-  ValueInput
+  ValueInput,
+  AssetInput
 } from "../../inputs/types"
 
 import {
@@ -168,6 +169,24 @@ function ValueWidget(props: {
         onChange={props.handleChange}
       />
       <InputGroup.Addon>BTC (simulated)</InputGroup.Addon>
+    </InputGroup>
+  )
+}
+
+function AssetWidget(props: {
+  input: AssetInput
+  handleChange: (e) => undefined
+}) {
+  return (
+    <InputGroup style={{ width: "300px" }}>
+      <FormControl
+        type="text"
+        className="string-input"
+        placeholder="L-BTC"
+        key={props.input.name}
+        value={props.input.value}
+        onChange={props.handleChange}
+      />
     </InputGroup>
   )
 }
@@ -619,6 +638,8 @@ function getWidgetType(
       return TimeWidget
     case "valueInput":
       return ValueWidget
+    case "assetInput":
+      return AssetWidget
     case "timestampTimeInput":
       return TimestampTimeWidget
     case "blockheightTimeInput":

@@ -1,17 +1,11 @@
 import {
-  createTypeSignature,
   getTypeClass,
   Hash,
   inputTypesToString,
   isHash,
   isHashFunctionName,
-  isList,
-  isPrimitive,
-  isTypeClass,
   List,
-  Primitive,
   Type,
-  TypeClass,
   TypeSignature,
   typeToString
 } from "./btc/types"
@@ -20,15 +14,11 @@ import {
   ASTNode,
   Clause,
   Expression,
-  Import,
   ListLiteral,
   mapOverAST,
-  Parameter,
   RawContract,
-  scopedName,
   Statement,
   ValueLiteral,
-  Variable
 } from "./ast"
 
 import { getTypeSignature } from "./btc/instructions"
@@ -77,9 +67,9 @@ function unify(left: Type, right: Type, mapping: TypeMap) {
   if (typeClass !== getTypeClass(right)) {
     throw new IvyTypeError(
       "incompatible types: " +
-        typeToString(left) +
-        " and " +
-        typeToString(right)
+      typeToString(left) +
+      " and " +
+      typeToString(right)
     )
   }
   switch (typeClass) {
@@ -98,9 +88,9 @@ function unify(left: Type, right: Type, mapping: TypeMap) {
       if (leftHashFunction !== rightHashFunction) {
         throw new IvyTypeError(
           "incompatible hash functions: " +
-            leftHashFunction +
-            " and " +
-            rightHashFunction
+          leftHashFunction +
+          " and " +
+          rightHashFunction
         )
       }
       return unify((left as Hash).inputType, (right as Hash).inputType, mapping)
@@ -113,9 +103,9 @@ export function matchTypes(firstType: Type, secondType: Type) {
   if (typeClass !== getTypeClass(secondType)) {
     throw new IvyTypeError(
       "got " +
-        typeToString(secondType) +
-        ", expected " +
-        typeToString(firstType)
+      typeToString(secondType) +
+      ", expected " +
+      typeToString(firstType)
     )
   }
   switch (typeClass) {
@@ -123,9 +113,9 @@ export function matchTypes(firstType: Type, secondType: Type) {
       if (firstType !== secondType) {
         throw new IvyTypeError(
           "got " +
-            typeToString(secondType) +
-            ", expected " +
-            typeToString(firstType)
+          typeToString(secondType) +
+          ", expected " +
+          typeToString(firstType)
         )
       }
       return
@@ -136,9 +126,9 @@ export function matchTypes(firstType: Type, secondType: Type) {
       if (firstType.hashFunction !== secondType.hashFunction) {
         throw new IvyTypeError(
           "cannot match " +
-            typeToString(firstType) +
-            " with " +
-            typeToString(secondType)
+          typeToString(firstType) +
+          " with " +
+          typeToString(secondType)
         )
       }
       matchTypes(firstType.inputType, secondType.inputType)
@@ -165,9 +155,9 @@ export function unifyFunction(
   if (inputTypes.length !== typeSignature.inputs.length) {
     throw new IvyTypeError(
       "got " +
-        inputTypesToString(inputTypes) +
-        ", expected " +
-        inputTypesToString(typeSigInputs)
+      inputTypesToString(inputTypes) +
+      ", expected " +
+      inputTypesToString(typeSigInputs)
     )
   }
   for (let i = 0; i < inputTypes.length; i++) {
@@ -204,7 +194,7 @@ export function typeCheckExpression(expression: Expression): Type {
       }
       switch (expression.instruction) {
         case "bytes":
-          if (inputTypes.length !== 1) { 
+          if (inputTypes.length !== 1) {
             throw new IvyTypeError("bytes function expected 1 argument, got " + inputTypes.length)
           }
           if (inputTypes[0] === "Value") {
@@ -257,7 +247,7 @@ export function typeCheckStatement(statement: Statement) {
       if (expressionType !== "Boolean") {
         throw new IvyTypeError(
           "verify statement expects a Boolean, got " +
-            typeToString(expressionType)
+          typeToString(expressionType)
         )
       }
       return
@@ -267,7 +257,17 @@ export function typeCheckStatement(statement: Statement) {
       if (expressionType !== "Value") {
         throw new IvyTypeError(
           "unlock statement expects a Value, got " +
-            typeToString(expressionType)
+          typeToString(expressionType)
+        )
+      }
+      return
+    }
+    case "of": {
+      const expressionType = typeCheckExpression(statement.asset)
+      if (expressionType !== "Asset") {
+        throw new IvyTypeError(
+          "of statement expects a Asset, got " +
+          typeToString(expressionType)
         )
       }
       return
@@ -299,7 +299,7 @@ function checkMultiSigArgumentCounts(contract: RawContract) {
           if (parseInt(sigs.value, 10) > pubKeys.values.length) {
             throw new IvyTypeError(
               "number of public keys passed to checkMultiSig " +
-                "must be greater than or equal to number of signatures"
+              "must be greater than or equal to number of signatures"
             )
           }
         }
@@ -313,10 +313,14 @@ function checkMultiSigArgumentCounts(contract: RawContract) {
 
 function isSignatureCheck(statement: Statement) {
   return (
-    statement.type === "unlock" ||
-    (statement.type === "assertion" &&
-      statement.expression.type === "instructionExpression" &&
-      statement.expression.instruction === "checkSig") // don't even allow multisig yet
+    statement.type === "unlock" || statement.type === "of" ||
+    (
+      statement.type === "assertion" &&
+      statement.expression.type === "instructionExpression"
+    ) && (
+      statement.expression.instruction === "checkSig" || // don't even allow multisig yet
+      statement.expression.instruction === "checkSigFromStack"
+    )
   )
 }
 
@@ -371,6 +375,18 @@ export function typeCheckContract(rawContract: RawContract): RawContract {
       "A contract can only have one parameter of type Value."
     )
   }
+  // elements: check asset
+  const numAssets = rawContract.parameters.filter(
+    param => param.itemType === "Asset"
+  ).length
+  if (numAssets === 0) {
+    throw new IvyTypeError("A contract must have a parameter of type Asset.")
+  }
+  if (numAssets > 1) {
+    throw new IvyTypeError(
+      "A contract can only have one parameter of type Asset."
+    )
+  }
   for (const parameter of rawContract.parameters) {
     if (parameter.itemType === undefined) {
       throw new BugError("parameter type unexpectedly undefined")
@@ -383,6 +399,9 @@ export function typeCheckContract(rawContract: RawContract): RawContract {
     for (const parameter of clause.parameters) {
       if (parameter.itemType === "Value") {
         throw new IvyTypeError("Values cannot be used as clause parameters")
+      }
+      if (parameter.itemType === "Asset") {
+        throw new IvyTypeError("Assets cannot be used as clause parameters")
       }
     }
   }

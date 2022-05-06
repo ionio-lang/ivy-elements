@@ -16,7 +16,7 @@ const TX = primitives.TX
 
 import * as crypto from "bcrypto"
 
-import { secp256k1 } from "./crypto"
+import { secp256k1, sha256 } from "./crypto"
 
 export const toSighash = (
   instantiated: Contract,
@@ -113,4 +113,16 @@ export const createSignature = (sigHash: Buffer, secret: string) => {
   const sig = secp256k1.signDER(sigHash, privKey) as Buffer
   const fullSig = Buffer.concat([sig, sigHashType])
   return fullSig
+}
+
+export const createDataSignature = (message: Buffer, secret: string) => {
+  let privKey
+  try {
+    privKey = KeyRing.fromSecret(secret).getPrivateKey()
+  } catch (e) {
+    console.log(e)
+    return undefined
+  }
+  const datasig = secp256k1.signDER(sha256(message), privKey) as Buffer
+  return datasig
 }

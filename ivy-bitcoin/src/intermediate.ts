@@ -2,19 +2,14 @@
 
 import {
   ASTNode,
-  Block,
   Clause,
   Contract,
-  Expression,
   InstructionExpression,
-  mapOverAST,
-  Parameter,
   Variable
 } from "./ast"
 
 import { BugError } from "./errors"
 
-import { Instruction } from "./btc/instructions"
 
 export type Operation =
   | Get
@@ -79,7 +74,7 @@ export interface Verify {
 
 export interface Push {
   type: "push"
-  literalType: "Integer" | "Boolean"
+  literalType: "Integer" | "Boolean" | "Bytes"
   value: string
 }
 
@@ -224,6 +219,7 @@ function compileToIntermediate(
       emit({ type: "push", literalType: node.literalType, value: node.value })
       return node
     }
+    case "of": 
     case "unlock": {
       return node
     }

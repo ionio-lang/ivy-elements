@@ -1,10 +1,9 @@
 // Predefined contract templates
 
-import { opcode as Opcode } from "bcoin"
 import { compile } from "./compile"
 import { instantiate } from "./instantiate"
 import { spend } from "./spend"
-import { createSignature, toSighash } from "./spend"
+import { createSignature, createDataSignature, toSighash } from "./spend"
 import { Template } from "./template"
 
 export const DEMO_ID_LIST = [
@@ -19,76 +18,88 @@ export const DEMO_ID_LIST = [
   "TransferWithTimeout",
   "EscrowWithDelay",
   "VaultSpend",
-  "HTLC"
+  "HTLC",
+  "HodlVault"
 ]
 
 export const DEMO_CONTRACTS = {
-  LockWithPublicKey: `contract LockWithPublicKey(publicKey: PublicKey, val: Value) {
+  LockWithPublicKey: `contract LockWithPublicKey(publicKey: PublicKey, val: Value, asset: Asset) {
   clause spend(sig: Signature) {
     verify checkSig(publicKey, sig)
-    unlock val
+    unlock val 
+    of asset
   }
 }`,
   LockWithMultisig: `contract LockWithMultisig(
   pubKey1: PublicKey,
   pubKey2: PublicKey,
   pubKey3: PublicKey,
-  val: Value
+  val: Value,
+  asset: Asset
 ) {
   clause spend(sig1: Signature, sig2: Signature) {
     verify checkMultiSig([pubKey1, pubKey2, pubKey3], [sig1, sig2])
     unlock val
+    of asset
   }
 }`,
-  LockWithPublicKeyHash: `contract LockWithPublicKeyHash(pubKeyHash: Sha256(PublicKey), val: Value) {
+  LockWithPublicKeyHash: `contract LockWithPublicKeyHash(pubKeyHash: Sha256(PublicKey), val: Value, asset: Asset) {
   clause spend(pubKey: PublicKey, sig: Signature) {
     verify sha256(pubKey) == pubKeyHash
     verify checkSig(pubKey, sig)
     unlock val
+    of asset
   }
 }`,
-  RevealPreimage: `contract RevealPreimage(hash: Sha256(Bytes), val: Value) {
+  RevealPreimage: `contract RevealPreimage(hash: Sha256(Bytes), val: Value, asset: Asset) {
   clause reveal(string: Bytes) {
     verify sha256(string) == hash
     unlock val
+    of asset
   }
 }`,
-  RevealCollision: `contract RevealCollision(val: Value) {
+  RevealCollision: `contract RevealCollision(val: Value, asset: Asset) {
   clause reveal(string1: Bytes, string2: Bytes) {
     verify string1 != string2
     verify sha1(string1) == sha1(string2)
     unlock val
+    of asset
   }
 }`,
-  LockUntil: `contract LockUntil(publicKey: PublicKey, time: Time, val: Value) {
+  LockUntil: `contract LockUntil(publicKey: PublicKey, time: Time, val: Value, asset: Asset) {
   clause spend(sig: Signature) {
     verify after(time)
     verify checkSig(publicKey, sig)
     unlock val
+    of asset
   }
 }`,
-  LockDelay: `contract LockDelay(publicKey: PublicKey, delay: Duration, val: Value) {
+  LockDelay: `contract LockDelay(publicKey: PublicKey, delay: Duration, val: Value, asset: Asset) {
   clause spend(sig: Signature) {
     verify checkSig(publicKey, sig)
     verify older(delay)
     unlock val
+    of asset
   }
 }`,
   TransferWithTimeout: `contract TransferWithTimeout(
   sender: PublicKey,
   recipient: PublicKey,
   timeout: Time,
-  val: Value
+  val: Value,
+  asset: Asset
 ) {
   clause transfer(senderSig: Signature, recipientSig: Signature) {
     verify checkSig(sender, senderSig)
     verify checkSig(recipient, recipientSig)
     unlock val
+    of asset
   }
   clause timeout(senderSig: Signature) {
     verify after(timeout)
     verify checkSig(sender, senderSig)
     unlock val
+    of asset
   }
 }`,
   EscrowWithDelay: `contract EscrowWithDelay(
@@ -96,7 +107,8 @@ export const DEMO_CONTRACTS = {
   recipient: PublicKey,
   escrow: PublicKey,
   delay: Duration,
-  val: Value
+  val: Value,
+  asset: Asset
 ) {
   clause transfer(sig1: Signature, sig2: Signature) {
     verify checkMultiSig(
@@ -104,27 +116,32 @@ export const DEMO_CONTRACTS = {
       [sig1, sig2]
     )
     unlock val
+    of asset
   }
   clause timeout(sig: Signature) {
     verify checkSig(sender, sig)
     verify older(delay)
     unlock val
+    of asset
   }
 }`,
   VaultSpend: `contract VaultSpend(
   hotKey: PublicKey,
   coldKey: PublicKey,
   delay: Duration,
-  val: Value
+  val: Value,
+  asset: Asset
 ) {
   clause cancel(sig: Signature) {
     verify checkSig(coldKey, sig)
     unlock val
+    of asset
   }
   clause complete(sig: Signature) {
     verify older(delay)
     verify checkSig(hotKey, sig)
     unlock val
+    of asset
   }
 }`,
   HTLC: `contract HTLC(
@@ -132,23 +149,44 @@ export const DEMO_CONTRACTS = {
   recipient: PublicKey,
   expiration: Time,
   hash: Sha256(Bytes),
-  val: Value
+  val: Value,
+  asset: Asset
 ) {
   clause complete(preimage: Bytes, sig: Signature) {
     verify sha256(preimage) == hash
     verify checkSig(recipient, sig)
     unlock val
+    of asset
   }
   clause cancel(sig: Signature) {
     verify after(expiration)
     verify checkSig(sender, sig)
     unlock val
+    of asset
   }
 }`,
-  RevealFixedPoint: `contract RevealFixedPoint(val: Value) {
+  RevealFixedPoint: `contract RevealFixedPoint(val: Value, asset: Asset) {
   clause reveal(hash: Bytes) {
     verify bytes(sha256(hash)) == hash
     unlock val
+    of asset
+  }
+}`,
+  HodlVault: `contract HodlVault(
+  ownerPubKey: PublicKey, 
+  oraclePubKey: PublicKey,
+  priceTarget: Bytes,
+  val: Value,
+  asset: Asset
+){
+  clause spend(ownerSig: Signature, oracleSig: DataSignature, oracleMessage: Bytes) {
+    verify tx.outputs[0].asset == bytes(02000000)
+    verify priceTarget == oracleMessage
+    verify checkSigFromStack(oracleSig, oracleMessage, oraclePubKey)
+    verify checkSig(ownerPubKey, ownerSig)
+    verify tx.version == bytes(02000000)
+    unlock val
+    of asset
   }
 }`
 }
@@ -193,23 +231,26 @@ const PrivateKeys = [
   "L3tiMe49mswHQKqrikqNxJpVZSiBU7bYs1tstuXEYnrvjqRYvWUE",
   "KwFv55qQSs3ipb8Trh6EkYaUTNGNtx5qVx55LMqNvRrj69En5tzY"
 ]
+// 250k
+const PriceTargetBytes = Buffer.from("03d090", "hex");
 
 export const TEST_CONTRACT_ARGS = {
-  LockWithPublicKey: [PublicKeys[0], 0],
-  LockWithMultisig: [...PublicKeys, 0],
-  LockWithPublicKeyHash: [PublicKeyHash, 0],
-  RevealPreimage: [Sha256Bytes, 0],
-  RevealCollision: [0],
-  LockUntil: [PublicKeys[0], 20, 0],
-  LockDelay: [PublicKeys[0], 20, 0],
-  TransferWithTimeout: [PublicKeys[0], PublicKeys[1], 20, 0],
-  EscrowWithDelay: [...PublicKeys, 20, 0],
-  VaultSpend: [PublicKeys[0], PublicKeys[1], 20, 0],
-  HTLC: [PublicKeys[0], PublicKeys[1], 20, Sha256Bytes, 0],
-  RevealFixedPoint: [0],
-  HashOperations: [Sha256Bytes, Sha1Bytes, Ripemd160Bytes, 0],
-  RevealNumber: [5, 0],
-  CheckSize: [0],
+  LockWithPublicKey: [PublicKeys[0], 0, "btc"],
+  LockWithMultisig: [...PublicKeys, 0, "btc"],
+  LockWithPublicKeyHash: [PublicKeyHash, 0, "btc"],
+  RevealPreimage: [Sha256Bytes, 0, "btc"],
+  RevealCollision: [0, "btc"],
+  LockUntil: [PublicKeys[0], 20, 0, "btc"],
+  LockDelay: [PublicKeys[0], 20, 0, "btc"],
+  TransferWithTimeout: [PublicKeys[0], PublicKeys[1], 20, 0, "btc"],
+  EscrowWithDelay: [...PublicKeys, 20, 0, "btc"],
+  VaultSpend: [PublicKeys[0], PublicKeys[1], 20, 0, "btc"],
+  HTLC: [PublicKeys[0], PublicKeys[1], 20, Sha256Bytes, 0, "btc"],
+  RevealFixedPoint: [0, "btc"],
+  HashOperations: [Sha256Bytes, Sha1Bytes, Ripemd160Bytes, 0, "btc"],
+  RevealNumber: [5, 0, "btc"],
+  CheckSize: [0, "btc"],
+  HodlVault: [PublicKeys[0], PublicKeys[1], PriceTargetBytes, 0, "btc"]
 }
 
 export const TEST_CONTRACT_CLAUSE_NAMES = {
@@ -228,6 +269,7 @@ export const TEST_CONTRACT_CLAUSE_NAMES = {
   HashOperations: "reveal",
   RevealNumber: "reveal",
   CheckSize: "reveal",
+  HodlVault: "spend"
 }
 
 export const TEST_CONTRACT_TIMES = {
@@ -249,26 +291,30 @@ export const TEST_CASES = {
   hash1: Sha256(Bytes),
   hash2: Sha1(Bytes),
   hash3: Ripemd160(Bytes),
-  val: Value
+  val: Value,
+  asset: Asset
 ) {
   clause reveal(preimage: Bytes) {
     verify sha256(preimage) == hash1
     verify sha1(preimage) == hash2
     verify ripemd160(preimage) == hash3
     unlock val
+    of asset
   }
 }`,
-  RevealNumber: `contract RevealNumber(num: Integer, val: Value) {
+  RevealNumber: `contract RevealNumber(num: Integer, val: Value, asset: Asset) {
     clause reveal(num2: Integer) {
       verify num == num2
       verify num2 == 5
       unlock val
+      of asset
     }
   }`,
-  CheckSize: `contract CheckSize(val: Value) {
+  CheckSize: `contract CheckSize(val: Value, asset: Asset) {
     clause reveal(str: Bytes) {
       verify size(str) == 32
       unlock val
+      of asset
     }
   }`
 }
@@ -293,6 +339,15 @@ function generateSignature(id: string, privateKeyIndex: number): string {
     throw new Error("sig unexpectedly undefined")
   }
   return sig.toString("hex")
+}
+
+function generateDataSignature(id: string, privateKeyIndex: number): string {
+  const privateKey = PrivateKeys[privateKeyIndex]
+  const datasig = createDataSignature(TEST_CONTRACT_ARGS[id][2], privateKey)
+  if (datasig === undefined) {
+    throw new Error("sig unexpectedly undefined")
+  }
+  return datasig.toString("hex")
 }
 
 export const TEST_SPEND_ARGUMENTS = {
@@ -322,7 +377,12 @@ export const TEST_SPEND_ARGUMENTS = {
   HashOperations: [Bytes],
   RevealNumber: [5],
   CheckSize: [Bytes],
-  HTLC: [Bytes, generateSignature("HTLC", 1)]
+  HTLC: [Bytes, generateSignature("HTLC", 1)],
+  HodlVault: [
+    generateSignature("HodlVault", 0),
+    generateDataSignature("HodlVault", 1),
+    PriceTargetBytes,
+  ]
 }
 
 export const ERRORS = {

@@ -48,6 +48,7 @@ export type Input =
   | LockTimeInput
   | SequenceNumberInput
   | ValueInput
+  | AssetInput
 
 export type InputType =
   | "parameterInput"
@@ -79,6 +80,8 @@ export type InputType =
   | "lockTimeInput"
   | "sequenceNumberInput"
   | "valueInput"
+  | "assetInput"
+
 
 export type PrimaryInputType =
   | "bytesInput"
@@ -89,6 +92,7 @@ export type PrimaryInputType =
   | "timeInput"
   | "signatureInput"
   | "valueInput"
+  | "assetInput"
   | "numberInput"
 
 export type InputContext =
@@ -299,6 +303,12 @@ export interface ValueInput {
   units: "satoshis" | "BTC"
 }
 
+export interface AssetInput {
+  type: "assetInput"
+  value: string
+  name: string
+}
+
 export function getChild(input: ComplexInput): string {
   return input.name + "." + input.value
 }
@@ -330,6 +340,7 @@ export function isPrimaryInputType(str: string): str is PrimaryInputType {
     case "timeInput":
     case "signatureInput":
     case "valueInput":
+    case "assetInput":
       return true
     default:
       return false
@@ -382,5 +393,9 @@ export function getInputType(type: ContractParameterType): PrimaryInputType {
       return "signatureInput"
     case "Value":
       return "valueInput"
+    case "Asset":
+      return "assetInput"
+    default:
+      throw new Error('unexpected input type')
   }
 }

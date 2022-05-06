@@ -29,7 +29,8 @@ import {
   SecondsDurationInput,
   TimeInput,
   TimestampTimeInput,
-  ValueInput
+  ValueInput,
+  AssetInput
 } from "../../inputs/types"
 import {
   getInputMap,
@@ -157,6 +158,14 @@ function ValueWidget(props: { input: ValueInput }) {
   )
 }
 
+function AssetWidget(props: { input: AssetInput }) {
+  return (
+    <div>
+      <pre>{props.input.value}</pre>
+    </div>
+  )
+}
+
 function getWidgetType(
   type: InputType
 ): ((props: { input: Input }) => JSX.Element) {
@@ -183,6 +192,8 @@ function getWidgetType(
       return GenerateBytesWidget
     case "valueInput":
       return ValueWidget
+    case "assetInput":
+      return AssetWidget
     case "numberInput":
     case "booleanInput":
     case "provideBytesInput":

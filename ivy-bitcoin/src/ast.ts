@@ -7,7 +7,7 @@ export interface Location {
   end: { column: number; line: number }
 }
 
-export type InstructionExpressionType = "binaryExpression" | "callExpression"
+export type InstructionExpressionType = "binaryExpression" | "callExpression" | "nullaryExpression" | "unaryExpression"
 
 export interface Parameter {
   type: "parameter"
@@ -73,7 +73,13 @@ export interface Unlock {
   value: Variable
 }
 
-export type Statement = Assertion | Unlock
+export interface Of {
+  type: "of"
+  location: Location
+  asset: Variable
+}
+
+export type Statement = Assertion | Unlock | Of
 
 export function statementToString(statement: Statement) {
   switch (statement.type) {
@@ -81,6 +87,8 @@ export function statementToString(statement: Statement) {
       return "verify " + expressionToString(statement.expression)
     case "unlock":
       return "unlock " + statement.value
+    case "of":
+      return "of " + statement.asset
   }
 }
 
@@ -217,6 +225,19 @@ function instructionExpressionToString(expression: InstructionExpression) {
         expression.args.map(exp => expressionToString(exp)).join(", ") +
         ")"
       )
+    case "nullaryExpression":
+      return (
+        expression.instruction
+      )
+    case "unaryExpression":
+      const [left, right] = expression.instruction.split["[i]"];
+      return (
+        left + 
+        "[" +
+        expressionToString(expression.args[0]) +
+        "]" +
+        right
+      )
   }
 }
 
@@ -319,6 +340,12 @@ export function mapOverAST(func: (Node) => ASTNode, node: ASTNode): ASTNode {
       return func({
         ...node,
         value: func(node.value)
+      })
+    }
+    case "of": {
+      return func({
+        ...node,
+        asset: func(node.asset)
       })
     }
   }

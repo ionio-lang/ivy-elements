@@ -1,11 +1,66 @@
 import { createTypeSignature, TypeSignature } from "./types"
 
-import { BugError } from "../errors"
-
 export type ComparisonOperator = "==" | "!="
+export type ConcatenationOperator = "+"
+export type ArithmeticOperator = "*" | "/" | "-" | "+"
+export type NullaryOperator =
+  | "this.index"
+  | "this.script"
+  | "tx.version"
+  | "tx.locktime"
+  | "tx.weight"
+  | "tx.inputs.length"
+  | "tx.outputs.length"
+export type UnaryOperator =
+  | "tx.inputs[i].value"
+  | "tx.inputs[i].asset"
+  | "tx.inputs[i].outpoint"
+  | "tx.inputs[i].sequence"
+  | "tx.inputs[i].script"
+  | "tx.inputs[i].issuance"
+  | "tx.outputs[i].value"
+  | "tx.outputs[i].asset"
+  | "tx.outputs[i].nonce"
+  | "tx.outputs[i].value"
+  | "tx.outputs[i].script"
+
 
 export function isComparisonOperator(str: string): str is ComparisonOperator {
-  return ["==", "!="].indexOf(str) !== -1
+  return ["==", "!="].includes(str)
+}
+
+export function isNullaryOperator(str: string): str is NullaryOperator {
+  switch (str) {
+    case "this.index":
+    case "this.script":
+    case "tx.version":
+    case "tx.locktime":
+    case "tx.weight":
+    case "tx.inputs.length":
+    case "tx.outputs.length":
+      return true
+    default:
+      return false
+  }
+}
+
+export function isUnaryOperator(str: string): str is UnaryOperator {
+  switch (str) {
+    case "tx.inputs[i].value":
+    case "tx.inputs[i].asset":
+    case "tx.inputs[i].outpoint":
+    case "tx.inputs[i].sequence":
+    case "tx.inputs[i].script":
+    case "tx.inputs[i].issuance":
+    case "tx.outputs[i].value":
+    case "tx.outputs[i].asset":
+    case "tx.outputs[i].nonce":
+    case "tx.outputs[i].value":
+    case "tx.outputs[i].script":
+      return true
+    default:
+      return false
+  }
 }
 
 export type FunctionName =
@@ -18,12 +73,13 @@ export type FunctionName =
   | "checkMultiSig"
   | "bytes"
   | "size"
+  | "checkSigFromStack"
 
 export type Opcode = string // for now
 
-export type BinaryOperator = ComparisonOperator
+export type BinaryOperator = ComparisonOperator | ConcatenationOperator | ArithmeticOperator
 
-export type Instruction = BinaryOperator | FunctionName
+export type Instruction = BinaryOperator | FunctionName | NullaryOperator | UnaryOperator
 
 // slightly hackish runtime type guard
 
@@ -58,6 +114,22 @@ export function getOpcodes(instruction: Instruction): Opcode[] {
       return []
     case "size":
       return ["SIZE", "SWAP", "DROP"]
+    case "checkSigFromStack":
+      return ["CHECKSIGFROMSTACK"] // will get special treatment
+    case "tx.version":
+      return ["INSPECTVERSION"]
+    case "tx.locktime":
+      return ["INSPECTLOCKTIME"]
+    case "tx.weight":
+      return ["TXWEIGHT"]
+    case "tx.inputs.length":
+      return ["INSPECTNUMINPUTS"]
+    case "tx.outputs.length":
+      return ["INSPECTNUMOUTPUTS"]
+    case "tx.outputs[i].asset":
+      return ["INSPECTOUTPUTASSET"]
+    default:
+      return []
   }
 }
 
@@ -79,6 +151,28 @@ export function getTypeSignature(instruction: Instruction): TypeSignature {
         ],
         "Boolean"
       )
+    case "checkSigFromStack":
+      return createTypeSignature(
+        [
+          "DataSignature",
+          "Bytes",
+          "PublicKey"
+        ],
+        "Boolean"
+      )
+
+    // introspection
+    case "tx.version":
+      return createTypeSignature([], "Bytes")
+    case "tx.outputs[i].asset":
+      return createTypeSignature(["Integer"], "Bytes")
+    case "tx.locktime":
+    case "tx.weight":
+    case "tx.inputs.length":
+    case "tx.outputs.length":
+      throw new Error("not implemented yet")
+    case "+":
+      throw new Error("should not call getTypeSignature on +")
     case "==":
     case "!=":
       throw new Error("should not call getTypeSignature on == or !=")
@@ -88,5 +182,9 @@ export function getTypeSignature(instruction: Instruction): TypeSignature {
       throw new Error("should not call getTypeSignature on hash function")
     case "bytes":
       throw new Error("should not call getTypeSignature on bytes function")
+
+
+    default:
+      throw new Error("not supported instruction")
   }
 }

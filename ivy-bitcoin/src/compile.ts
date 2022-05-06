@@ -2,7 +2,6 @@ import { optimize } from "./btc/optimize"
 import { toContractParameter } from "./btc/parameters"
 import toOpcodes from "./btc/toOpcodes"
 import { desugarContract } from "./desugar"
-import { NameError } from "./errors"
 import { compileContractToIntermediate } from "./intermediate"
 import { referenceCheck } from "./references"
 import { compileStackOps } from "./stack"
@@ -11,7 +10,7 @@ import { typeCheckContract } from "./typeCheck"
 
 import { RawContract } from "./ast"
 
-const parser = require("../lib/parser")
+const parser = require("../lib/parser");
 
 export function compile(source: string): Template | CompilerError {
   try {
@@ -22,6 +21,7 @@ export function compile(source: string): Template | CompilerError {
     const operations = compileStackOps(
       compileContractToIntermediate(desugarContract(ast))
     )
+
     const instructions = optimize(toOpcodes(operations))
     const params = ast.parameters.map(toContractParameter)
     return {

@@ -105,6 +105,28 @@ export function referenceCheck(contract: RawContract): RawContract {
               )
             }
           }
+          //elements
+          if (parameter.itemType === "Asset") {
+            const count = counts.get(parameter.name)
+            if (count === undefined) {
+              throw new Error("count unexpectedly undefined")
+            }
+            if (count === 0) {
+              throw new NameError(
+                "Asset " +
+                  parameter.name +
+                  " must be disposed of in clause " +
+                  clauseName
+              )
+            } else if (count > 1) {
+              throw new NameError(
+                "Asset " +
+                  parameter.name +
+                  " cannot be used twice in clause " +
+                  clauseName
+              )
+            }
+          }
         }
         return {
           ...mappedClause,

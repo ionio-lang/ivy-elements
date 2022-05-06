@@ -23,6 +23,11 @@ export interface ValueInfo {
   amount?: string
 }
 
+export interface AssetInfo {
+  name: string
+  asset: string
+}
+
 export interface ClauseInfo {
   name: string
   args: Param[]

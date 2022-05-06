@@ -1,0 +1,28 @@
+name: Github Pages
+on:
+  push:
+    branches: [master]
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ivy-playground
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - run: npm install
+      
+      - run: npm run build
+      
+      - name: Deploy to GitHub Pages
+        if: success()
+        uses: crazy-max/ghaction-github-pages@v2
+        with:
+          target_branch: gh-pages
+          build_dir: ivy-playground/build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

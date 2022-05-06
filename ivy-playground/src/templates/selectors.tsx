@@ -105,7 +105,7 @@ export const getContractArgs = createSelector(
       return undefined
     }
     try {
-      const contractArgs: Array<number | Buffer> = []
+      const contractArgs: Array<number | Buffer | string> = []
       for (const id of parameterIds) {
         if (
           inputMap[id].value === "valueInput" &&

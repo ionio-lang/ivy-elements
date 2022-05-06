@@ -14,6 +14,10 @@ let isHashTypeName = types.isHashTypeName
 let typeNameToHashFunction = types.typeNameToHashFunction
 let isDeclarableUnaryOperator = instructions.isDeclarableUnaryOperator
 let isComparisonOperator = instructions.isComparisonOperator
+let isNullaryOperator = instructions.isNullaryOperator
+let isUnaryOperator = instructions.isUnaryOperator
+
+
 
 function trimText(text) {
   return text.trim().replace("\n", "").replace(/[\s]+/g, " ")
@@ -28,13 +32,16 @@ Clause
   = "clause" _ name:Identifier "(" parameters:Parameters ")" __ "{" __ statements:Statement+ "}" __ { return { type: "clause", location: location(), name: name, parameters: parameters, statements: statements} }
 
 Statement
-  = Assertion / Unlock
+  = Assertion / Unlock / Of
 
 Assertion
   = "verify" _ exp:Expression1 __ { return { type: "assertion", location: location(), expression: exp} }
 
 Unlock
   = "unlock" _ value:VariableExpression __ { return { type: "unlock", location: location(), value: value } }
+
+Of
+  = "of" _ asset:VariableExpression __ { return { type: "of", location: location(), asset: asset } }
 
 // need to handle precedence
 
@@ -44,6 +51,8 @@ Expression1 "expression"
 
 Expression2
   = CallExpression
+  / NullaryExpression
+  / UnaryExpression
   / Literal
   / VariableExpression
   / "(" exp:Expression1 ")" { return exp }
@@ -61,6 +70,15 @@ ComparisonExpression // not associative
 
 ComparisonOperator
   = (operator:Operator & { return isComparisonOperator(operator) }) { return text() }
+
+NullaryExpression
+  = name:NullaryOperator { return createInstructionExpression("nullaryExpression", location(), name, []) }
+
+NullaryOperator
+  = (operator:GlobalIdentifier & { return isNullaryOperator(operator) }) { return text() }
+
+UnaryExpression
+  = obj:TxIdentifier "[" args:Expressions "]." prop:PropertyIdentifier { return createInstructionExpression("unaryExpression", location(), obj + "[i]." + prop, args)}
 
 CallExpression
   = name:FunctionIdentifier "(" args:Expressions ")" { return createInstructionExpression("callExpression", location(), name, args) }
@@ -117,6 +135,12 @@ FunctionIdentifier "functionIdentifier"
   = Identifier "." Identifier { return text() }
   / Identifier
 
+IntegerIdentifier "integerIdentifier"
+  = [-]?[0-9]+ { return text() }
+
+TxIdentifier 
+  = "tx.inputs" / "tx.outputs" { return text() }
+
 Nothing "nothing"
   = __ { return [] }
 
@@ -133,3 +157,9 @@ Comment "comment"
 
 Operator
   = [^ \t\n\rA-Za-z1-9\[\]\(\)]+ { return text() }
+
+GlobalIdentifier 
+  = "tx.version" / "tx.locktime" / "tx.weight" / "tx.inputs.length" / "tx.outputs.length" { return text() }
+
+PropertyIdentifier
+  = "asset" { return text() }

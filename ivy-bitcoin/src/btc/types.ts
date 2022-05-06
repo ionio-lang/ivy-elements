@@ -1,16 +1,19 @@
 import { BugError } from "../errors"
 
-export type Type = Primitive | Hash | List
+export type Type = Primitive | Hash | List 
 
 export type Primitive =
   | "PublicKey"
+  | "Address"
   | "Signature"
   | "Bytes"
   | "Time"
   | "Duration"
   | "Value"
+  | "Asset"
   | "Boolean"
   | "Integer"
+  | "DataSignature"
 
 export type HashFunction = "sha1" | "sha256" | "ripemd160"
 
@@ -58,6 +61,8 @@ export function isPrimitive(str: Type | string): str is Primitive {
     case "Boolean":
     case "Integer":
     case "Value":
+    case "Asset":
+    case "DataSignature":
       return true
     default:
       return false
@@ -86,7 +91,7 @@ export function isList(type: Type): type is List {
 export function isTypeClass(type: Type | TypeClass): type is TypeClass {
   return (
     type === "Primitive" ||
-    type === "TypeVariable" ||
+    //type === "TypeVariable" ||
     type === "Hash" ||
     type === "List"
   )

@@ -211,6 +211,9 @@ export function validateInput(input: Input): boolean {
     case "valueInput": {
       return isValidBTC(input.value)
     }
+    case "assetInput": {
+      return input.value === "L-BTC"
+    }
     case "lockTimeInput":
       return input.value === "timeInput"
     case "sequenceNumberInput":
@@ -249,7 +252,7 @@ export function getData(
   inputId: string,
   inputsById: { [s: string]: Input },
   sigHash?: Buffer
-): Buffer | number {
+): Buffer | number | string {
   const input = inputsById[inputId]
   if (!validateInput(input)) {
     throw new Error("invalid input: " + input.name)
@@ -283,6 +286,9 @@ export function getData(
     }
     case "valueInput": {
       return Math.round(parseFloat(input.value) * 100000000)
+    }
+    case "assetInput": {
+      return input.value
     }
     case "blocksDurationInput":
     case "secondsDurationInput": {
@@ -457,6 +463,8 @@ export function getDefaultContractParameterValue(inputType: InputType): string {
       return "blockheightTimeInput"
     case "valueInput":
       return "0"
+    case "assetInput":
+      return "L-BTC"
   }
 }
 
@@ -488,6 +496,10 @@ export function getDefaultClauseParameterValue(inputType: InputType): string {
     case "lockTimeInput":
     case "sequenceNumberInput":
     case "valueInput":
+      throw new Error(
+        "getDefaultClauseParameterValue should not be called on " + inputType
+      )
+    case "assetInput":
       throw new Error(
         "getDefaultClauseParameterValue should not be called on " + inputType
       )

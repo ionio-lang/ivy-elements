@@ -19,6 +19,7 @@ export const loadTemplate = (selected: string) => {
     }
     const state = getState()
     const source = getSourceMap(state)[selected]
+    console.log(source)
     dispatch(setSource(source))
   }
 }

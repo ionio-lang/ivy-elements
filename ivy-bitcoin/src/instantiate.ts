@@ -9,6 +9,8 @@ import {
 } from "bcoin"
 import { BugError } from "./errors"
 
+console.log(typeof Opcode)
+
 import * as crypto from "bcrypto"
 
 const MTX = primitives.MTX
@@ -116,6 +118,9 @@ export function symbolToOpcode(sym: string, argMap: Map<string, any>) {
       throw new BugError("argument '" + name + "' unexpectedly has no data")
     }
     return argToPushData(arg)
+  } else if (sym.startsWith('0x')) {
+    // it's hex encoded bytestring
+    return Opcode.fromData(Buffer.from(sym, "hex"));
   } else if (/^\d+$/.test(sym)) {
     return Opcode.fromInt(parseInt(sym, 10))
   }
@@ -124,23 +129,32 @@ export function symbolToOpcode(sym: string, argMap: Map<string, any>) {
 
 export function instantiate(
   template: Template,
-  args: Array<Buffer | number>,
+  args: Array<Buffer | number | string>,
   seed = crypto.random.randomBytes(32)
 ): Contract {
-  const numArgs = template.params.length
+  let numArgs
+  try {
+    numArgs = template.params.length
+  } catch(e) {
+    console.log(template)
+    throw e
+  }
   if (numArgs !== args.length) {
     throw new Error("expected " + numArgs + " arguments, got " + args.length)
   }
   const dataArgs = args.filter(
-    (_, i) => template.params[i].valueType !== "Value"
+    (_, i) => template.params[i].valueType !== "Value" || template.params[i].valueType !== "Asset"
   )
   const valueArgs = args.filter(
     (_, i) => template.params[i].valueType === "Value"
   ) as number[]
+  const assetArgs = args.filter(
+    (_, i) => template.params[i].valueType === "Asset"
+  ) as number[]
   const instructions = template.instructions
   const argMap = new Map<string, any>()
   template.params.map((param, i) => {
-    if (param.valueType !== "Value") {
+    if (param.valueType !== "Value" && param.valueType !== "Asset") {
       argMap.set(param.name, args[i])
     }
   })
