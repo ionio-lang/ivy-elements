@@ -3,3 +3,4 @@ export const H_POINT: Buffer = Buffer.from(
   'hex'
 );
 export const DUST_LIMIT = 100;
+export const LEAF_VERSION_TAPSCRIPT = 0xc4;

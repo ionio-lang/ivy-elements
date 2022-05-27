@@ -1,20 +1,19 @@
 import { TxOutput } from 'liquidjs-lib';
 
-export enum PrimitiveType {
-  Number = 'Number',
-  Bytes = 'Bytes',
-  Boolean = 'Boolean',
-  Signature = 'Signature',
-  DataSignature = 'DataSignature',
-  XOnlyPublicKey = 'XOnlyPublicKey',
-}
-
-export interface Outpoint {
+export interface Utxo {
   txid: string;
   vout: number;
   prevout: TxOutput;
 }
 
-export interface IdentityProvider {
-  signTransaction(psetBase64: string): Promise<string>;
+export enum PrimitiveType {
+  Number = 'number',
+  Bytes = 'bytes',
+  Boolean = 'bool',
+  Asset = 'asset',
+  Value = 'value',
+  Signature = 'sig',
+  DataSignature = 'datasig',
+  PublicKey = 'pubkey',
+  XOnlyPublicKey = 'xonlypubkey',
 }

@@ -7,29 +7,33 @@ import {
   BIP341Factory,
   HashTree,
   TinySecp256k1Interface,
+  TaprootLeaf,
 } from 'liquidjs-lib/src/bip341';
 import { address, script, TxOutput } from 'liquidjs-lib';
 import { H_POINT } from './constants';
-import { Outpoint } from './interfaces';
+import { Utxo } from './interfaces';
+import { tweakPublicKey } from './utils/taproot';
+import { replaceTemplateWithConstructorArg } from './utils/template';
+import { isSigner } from './Signer';
 
 export interface ContractInterface {
   name: string;
   address: string;
-  fundingOutpoint: Outpoint | undefined;
+  fundingUtxo: Utxo | undefined;
   bytesize: number;
   functions: {
     [name: string]: ContractFunction;
   };
   leaves: { scriptHex: string }[];
   scriptPubKey: Buffer;
-  attach(txid: string, vout: number, prevout: TxOutput): ContractInterface;
+  from(txid: string, vout: number, prevout: TxOutput): ContractInterface;
   getTaprootTree(): HashTree;
 }
 
 export class Contract implements ContractInterface {
   name: string;
   address: string;
-  fundingOutpoint: Outpoint | undefined;
+  fundingUtxo: Utxo | undefined;
   // TODO add bytesize calculation
   bytesize: number = 0;
 
@@ -37,19 +41,35 @@ export class Contract implements ContractInterface {
     [name: string]: ContractFunction;
   };
 
-  leaves: { scriptHex: string }[];
+  leaves: TaprootLeaf[];
   scriptPubKey: Buffer;
+  private parity: number;
 
   constructor(
     private artifact: Artifact,
+    private constructorArgs: Argument[],
     private network: Network,
     private ecclib: TinySecp256k1Interface
   ) {
-    //TODO add constructorInputs if we figure out templating strings
-    const expectedProperties = ['contractName', 'functions'];
+    const expectedProperties = [
+      'contractName',
+      'functions',
+      'constructorInputs',
+    ];
     if (!expectedProperties.every(property => property in artifact)) {
       throw new Error('Invalid or incomplete artifact provided');
     }
+
+    if (artifact.constructorInputs.length !== constructorArgs.length) {
+      throw new Error(
+        `Incorrect number of arguments passed to ${artifact.contractName} constructor`
+      );
+    }
+
+    // Encode arguments (this performs type checking)
+    constructorArgs.forEach((arg, i) =>
+      encodeArgument(arg, artifact.constructorInputs[i].type)
+    );
 
     this.leaves = [];
     this.functions = {};
@@ -64,14 +84,14 @@ export class Contract implements ContractInterface {
       }
       this.functions[f.name] = this.createFunction(f, i);
 
-      // check for constructor inputs
-      const asm = f.asm.map(op => {
-        // if Number encode as bytes
-        if (typeof op === 'number' && Number.isInteger(op)) {
-          return script.number.encode(op).toString('hex');
-        }
-        return op;
-      });
+      // check for constructor inputs to replace template strings starting with $ or strip 0x from hex encoded strings
+      const asm = f.asm.map(op =>
+        replaceTemplateWithConstructorArg(
+          op,
+          artifact.constructorInputs,
+          constructorArgs
+        )
+      );
 
       this.leaves.push({
         scriptHex: script.fromASM(asm.join(' ')).toString('hex'),
@@ -81,11 +101,16 @@ export class Contract implements ContractInterface {
     // name
     this.name = artifact.contractName;
 
-    // address
     const bip341 = BIP341Factory(this.ecclib);
     const hashTree = toHashTree(this.leaves);
+
+    // scriptPubKey & addressl
     this.scriptPubKey = bip341.taprootOutputScript(H_POINT, hashTree);
     this.address = address.fromOutputScript(this.scriptPubKey, this.network);
+
+    // parity bit
+    const { parity } = tweakPublicKey(H_POINT, hashTree.hash, this.ecclib);
+    this.parity = parity;
     // TODO add bytesize calculation
     //this.bytesize = calculateBytesize(this.leaves);
   }
@@ -94,14 +119,14 @@ export class Contract implements ContractInterface {
     return toHashTree(this.leaves, true);
   }
 
-  attach(txid: string, vout: number, prevout: TxOutput): this {
+  from(txid: string, vout: number, prevout: TxOutput): this {
     // check we are using an actual funding outpoint for the script of the contract
     if (!prevout.script.equals(this.scriptPubKey))
       throw new Error(
         'given prevout script does not match contract scriptPubKey'
       );
 
-    this.fundingOutpoint = {
+    this.fundingUtxo = {
       txid,
       vout,
       prevout,
@@ -114,24 +139,30 @@ export class Contract implements ContractInterface {
     artifactFunction: Function,
     selector: number
   ): ContractFunction {
-    return (...args: Argument[]) => {
-      if (artifactFunction.functionInputs.length !== args.length) {
+    return (...functionArgs: Argument[]) => {
+      if (artifactFunction.functionInputs.length !== functionArgs.length) {
         throw new Error(
           `Incorrect number of arguments passed to function ${artifactFunction.name}`
         );
       }
 
       // Encode passed args (this also performs type checking)
-      const encodedArgs = args.map((arg, i) =>
-        encodeArgument(arg, artifactFunction.functionInputs[i].type)
-      );
+      functionArgs.forEach((arg, index) => {
+        if (isSigner(arg)) return;
+        return encodeArgument(arg, artifactFunction.functionInputs[index].type);
+      });
 
       return new Transaction(
+        this.artifact.constructorInputs,
+        this.constructorArgs,
         artifactFunction,
+        functionArgs,
         selector,
-        encodedArgs,
-        this.leaves,
-        this.fundingOutpoint,
+        this.fundingUtxo,
+        {
+          leaves: this.leaves,
+          parity: this.parity,
+        },
         this.network
       );
     };

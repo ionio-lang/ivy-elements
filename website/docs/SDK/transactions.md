@@ -52,16 +52,16 @@ The `withUtxo()` function allows you to provide one or many UTXOs to be used in 
 
 ### unlock()
 ```ts
-async transaction.unlock(signer?: IdentityProvider): Promise<TransactionInterface>;
+async transaction.unlock(signer?: Signer): Promise<TransactionInterface>;
 ```
 
 After completing a transaction, the `unlock()` function can be used to finalize the transaction. An incomplete transaction cannot be sent.
 
-If the contract needs a signature to be sent (ie. a `CHECKSIG` opcode), the `unlock()` function can be called with an optional `signer` parameter. This parameter is an `IdentityProvider` interface, which can be used to provide the signature.
+If the contract needs a signature to be sent (ie. a `CHECKSIG` opcode), the `unlock()` function can be called with an optional `signer` parameter. This parameter is an `Signer` interface, which can be used to provide the signature.
 
 
 ```ts
-export interface IdentityProvider {
+export interface Signer {
   signTransaction(psetBase64: string): Promise<string>;
 }
 ```

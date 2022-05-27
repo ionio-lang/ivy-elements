@@ -6,25 +6,40 @@ import {
   script,
   witnessStackToScriptWitness,
 } from 'liquidjs-lib';
+import {
+  findScriptPath,
+  tapLeafHash,
+  TaprootLeaf,
+  toHashTree,
+} from 'liquidjs-lib/src/bip341';
 import { Network } from 'liquidjs-lib/src/networks';
-import { Function, RequirementType } from './Artifact';
-import { IdentityProvider, Outpoint, PrimitiveType } from './interfaces';
+import { Argument, encodeArgument } from './Argument';
+import { Function, Output, Parameter } from './Artifact';
+import { H_POINT, LEAF_VERSION_TAPSCRIPT } from './constants';
+import { Utxo } from './interfaces';
+import { isSigner } from './Signer';
+import { replaceTemplateWithConstructorArg } from './utils/template';
 
 export interface TransactionInterface {
   psbt: Psbt;
-  withUtxo(outpoint: Outpoint): TransactionInterface;
+  withUtxo(outpoint: Utxo): TransactionInterface;
   withRecipient(
     addressOrScript: string | Buffer,
     amount: number,
     assetID: string
   ): TransactionInterface;
   withOpReturn(
-    hexChunks: string[],
     value: number,
-    assetID: string
+    assetID: string,
+    hexChunks: string[]
   ): TransactionInterface;
   withFeeOutput(fee: number): TransactionInterface;
-  unlock(signer?: IdentityProvider): Promise<TransactionInterface>;
+  unlock(): Promise<TransactionInterface>;
+}
+
+export interface TaprootData {
+  leaves: TaprootLeaf[];
+  parity: number;
 }
 
 export class Transaction implements TransactionInterface {
@@ -33,25 +48,40 @@ export class Transaction implements TransactionInterface {
   private fundingUtxoIndex: number = 0;
 
   constructor(
+    private constructorInputs: Parameter[],
+    private constructorArgs: Argument[],
     private artifactFunction: Function,
+    private functionArgs: Argument[],
     private selector: number,
-    private parameters: Buffer[],
-    private leaves: { scriptHex: string }[],
-    private fundingUtxo: Outpoint | undefined,
+    private fundingUtxo: Utxo | undefined,
+    private taprootData: TaprootData,
     private network: Network
   ) {
     this.psbt = new Psbt({ network: this.network });
     if (this.fundingUtxo) {
-      const leafToSpend = this.leaves[this.selector];
+      const leafToSpend = this.taprootData.leaves[this.selector];
+      const leafVersion = leafToSpend.version || LEAF_VERSION_TAPSCRIPT;
+      const leafHash = tapLeafHash(leafToSpend);
+      const hashTree = toHashTree(this.taprootData.leaves);
+      const path = findScriptPath(hashTree, leafHash);
+
+      const parityBit = Buffer.of(leafVersion + this.taprootData.parity);
+
+      const controlBlock = Buffer.concat([
+        parityBit,
+        H_POINT.slice(1),
+        ...path,
+      ]);
+
       this.psbt.addInput({
         hash: this.fundingUtxo.txid,
         index: this.fundingUtxo.vout,
         witnessUtxo: this.fundingUtxo.prevout,
         tapLeafScript: [
           {
-            leafVersion: 0,
+            leafVersion: leafVersion,
             script: Buffer.from(leafToSpend.scriptHex, 'hex'),
-            controlBlock: Buffer.alloc(33),
+            controlBlock,
           },
         ],
       });
@@ -59,7 +89,7 @@ export class Transaction implements TransactionInterface {
     }
   }
 
-  withUtxo(outpoint: Outpoint): this {
+  withUtxo(outpoint: Utxo): this {
     this.psbt.addInput({
       hash: outpoint.txid,
       index: outpoint.vout,
@@ -89,9 +119,9 @@ export class Transaction implements TransactionInterface {
   }
 
   withOpReturn(
-    hexChunks: string[],
     value: number = 0,
-    assetID: string = this.network.assetHash
+    assetID: string = this.network.assetHash,
+    hexChunks: string[] = []
   ): this {
     this.psbt.addOutput({
       script: script.compile([
@@ -115,52 +145,119 @@ export class Transaction implements TransactionInterface {
     return this;
   }
 
-  async unlock(signer?: IdentityProvider): Promise<this> {
+  async unlock(): Promise<this> {
     let witnessStack: Buffer[] = [];
-    this.artifactFunction.require.forEach(async ({ type }) => {
-      switch (type) {
-        case RequirementType.Signature:
-          if (!signer)
-            throw new Error(
-              'contract requires signature but no IdentityProvider was provided'
-            );
 
-          const signedPtxBase64 = await signer.signTransaction(
-            this.psbt.toBase64()
-          );
-          this.psbt = Psbt.fromBase64(signedPtxBase64);
+    // check for signature to be made
+    for (const arg of this.functionArgs) {
+      if (!isSigner(arg)) continue;
 
-          const { tapScriptSig } = this.psbt.data.inputs[this.fundingUtxoIndex];
-          if (tapScriptSig && tapScriptSig.length > 0) {
-            witnessStack = [
-              ...tapScriptSig.map(s => s.signature),
-              ...witnessStack,
-            ];
-          }
-          break;
+      const signedPtxBase64 = await arg.signTransaction(this.psbt.toBase64());
+      const signedPtx = Psbt.fromBase64(signedPtxBase64);
+      this.psbt = signedPtx;
 
-        case RequirementType.DataSignature:
-          if (
-            !this.artifactFunction.functionInputs.some(
-              p => p.type === PrimitiveType.DataSignature
-            )
-          )
-            throw new Error(
-              'contract requires data signature but no DataSignature was provided'
-            );
+      const { tapKeySig, tapScriptSig } = this.psbt.data.inputs[
+        this.fundingUtxoIndex
+      ];
+      if (tapScriptSig && tapScriptSig.length > 0) {
+        witnessStack = [...tapScriptSig.map(s => s.signature), ...witnessStack];
+      } else if (tapKeySig) {
+        witnessStack = [tapKeySig, ...witnessStack];
       }
-    });
+    }
+
+    for (const { type, atIndex, expected } of this.artifactFunction.require) {
+      // do the checks on introspection)
+      switch (type) {
+        case 'input':
+          if (atIndex === undefined)
+            throw new Error(
+              `atIndex field is required for requirement of type ${type}`
+            );
+          if (atIndex >= this.psbt.data.inputs.length)
+            throw new Error(`${type} is required at index ${atIndex}`);
+          break;
+        case 'output':
+          if (atIndex === undefined)
+            throw new Error(
+              `atIndex field is required for requirement of type ${type}`
+            );
+          if (atIndex >= this.psbt.data.outputs.length)
+            throw new Error(`${type} is required at index ${atIndex}`);
+          if (!expected)
+            throw new Error(
+              `expected field of type ${type} is required at index ${atIndex}`
+            );
+          const expectedProperties = ['script', 'value', 'asset', 'nonce'];
+          if (
+            !expectedProperties.every(
+              property => property in (expected as Output)
+            )
+          ) {
+            throw new Error('Invalid or incomplete artifact provided');
+          }
+          const outputAtIndex = this.psbt.TX.outs[atIndex];
+          // check the script
+          const { script, value } = expected as Output;
+          const scriptBuffer = Buffer.from(
+            replaceTemplateWithConstructorArg(
+              script,
+              this.constructorInputs,
+              this.constructorArgs
+            ),
+            'hex'
+          );
+          const slicedOutputScript = outputAtIndex.script
+            .toString('hex')
+            .startsWith('6a')
+            ? outputAtIndex.script
+            : outputAtIndex.script.slice(2);
+          if (!scriptBuffer.equals(slicedOutputScript))
+            throw new Error(
+              `required ${type} script does not match the transaction ${type} index ${atIndex}`
+            );
+          // check the value
+          const valueBuffer = Buffer.from(
+            replaceTemplateWithConstructorArg(
+              value,
+              this.constructorInputs,
+              this.constructorArgs
+            ),
+            'hex'
+          );
+          const outputValue = Buffer.from(outputAtIndex.value);
+          const reversedOutputValue = outputValue.slice(1).reverse();
+          if (!valueBuffer.equals(reversedOutputValue))
+            throw new Error(
+              `required ${type} value does not match the transaction ${type} index ${atIndex}`
+            );
+          break;
+        case 'after':
+        case 'older':
+        default:
+          break;
+      }
+    }
+
+    const encodedArgs = this.functionArgs
+      .filter(arg => !isSigner(arg))
+      .map((arg, index) => {
+        // Encode passed args (this also performs type checking)
+        return encodeArgument(
+          arg,
+          this.artifactFunction.functionInputs[index].type
+        );
+      });
 
     this.psbt.finalizeInput(this.fundingUtxoIndex!, (_, input) => {
       return {
         finalScriptSig: undefined,
-        finalScriptWitness: witnessStackToScriptWitness(
-          witnessStack.concat([
-            ...this.parameters, // TODO: check if this is correct
-            input.tapLeafScript![0].script,
-            input.tapLeafScript![0].controlBlock,
-          ])
-        ),
+        finalScriptWitness: witnessStackToScriptWitness([
+          ...witnessStack,
+          ...(encodedArgs as Buffer[]),
+          input.tapLeafScript![0].script,
+          input.tapLeafScript![0].controlBlock,
+        ]),
       };
     });
     return this;

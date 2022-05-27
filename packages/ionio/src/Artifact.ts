@@ -8,16 +8,28 @@ export interface Parameter {
 
 export interface Requirement {
   type: RequirementType;
-  value: Input | Output | number | undefined;
+  expected: Input | Output | number | string | undefined;
+  atIndex?: number; // for input* or output* requirements only
 }
 
 export enum RequirementType {
+  // Input
   Input = 'input',
   Output = 'output',
+  // Inputs: granular fields
+  InputValue = 'inputvalue',
+  InputScript = 'inputscript',
+  InputAsset = 'inputasset',
+  InputHash = 'inputhash',
+  InputIndex = 'inputindex',
+  // Outputs: granular fields
+  OutputValue = 'outputvalue',
+  OutputScript = 'outputscript',
+  OutputAsset = 'outputasset',
+  OutputNonce = 'outputnonce',
+  // Timelocks
   After = 'after',
   Older = 'older',
-  Signature = 'signature',
-  DataSignature = 'datasignature',
 }
 
 export interface Input {
@@ -30,7 +42,7 @@ export interface Input {
 
 export interface Output {
   script: string;
-  value: number;
+  value: string;
   asset: string;
   nonce: string;
 }
@@ -45,7 +57,7 @@ export interface Function {
 export interface Artifact {
   contractName: string;
   functions: Function[];
-  //constructorInputs: Parameter[];
+  constructorInputs: Parameter[];
 }
 
 export function importArtifact(artifactFile: string): Artifact {

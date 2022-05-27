@@ -58,5 +58,8 @@
   },
   "dependencies": {
     "liquidjs-lib": "git+https://github.com/louisinger/liquidjs-lib.git#psbt-taproot-support"
+  },
+  "jest": {
+    "testTimeout": 15000
   }
 }
